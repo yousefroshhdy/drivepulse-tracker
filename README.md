@@ -63,11 +63,3 @@ This project is built with .
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/b3e6d745-f157-47f3-8ff9-8d3ef7138460) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
