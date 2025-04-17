@@ -2,17 +2,19 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAuthenticated, logout, getCurrentUser } from '@/services/authService';
+import { useTheme } from '@/contexts/ThemeContext';
 import AppLayout from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Bell, Car, MapPin, AlertTriangle, LogOut } from 'lucide-react';
+import { Bell, Car, MapPin, AlertTriangle, LogOut, Moon, Sun } from 'lucide-react';
 
 const Settings = () => {
   const navigate = useNavigate();
   const user = getCurrentUser();
+  const { theme, toggleTheme } = useTheme();
 
   // Check if user is authenticated
   useEffect(() => {
@@ -71,6 +73,27 @@ const Settings = () => {
                 <LogOut className="mr-2 h-4 w-4" />
                 Sign Out
               </Button>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Appearance Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Appearance</CardTitle>
+            <CardDescription>Customize the app's look and feel</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {theme === 'dark' ? (
+                  <Moon className="h-4 w-4 text-gray-500" />
+                ) : (
+                  <Sun className="h-4 w-4 text-gray-500" />
+                )}
+                <span>Dark Mode</span>
+              </div>
+              <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
             </div>
           </CardContent>
         </Card>
