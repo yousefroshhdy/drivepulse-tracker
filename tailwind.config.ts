@@ -52,6 +52,17 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+                drivepulse: {
+                    dark: '#1A1F2C',
+                    blue: '#0EA5E9',
+                    teal: '#33C3F0',
+                    orange: '#F97316',
+                    green: '#10B981',
+                    red: '#EF4444',
+                    yellow: '#F59E0B',
+                    gray: '#8E9196',
+                    lightGray: '#F1F1F1',
+                },
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',

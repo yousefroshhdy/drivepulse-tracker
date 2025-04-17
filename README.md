@@ -1,6 +1,6 @@
-# Welcome to your Lovable project
+# DrivePulse Tracker
 
-## Project info
+A mobile application for tracking and analyzing driver behavior in real-time.
 
 **URL**: https://lovable.dev/projects/b3e6d745-f157-47f3-8ff9-8d3ef7138460
 
