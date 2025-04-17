@@ -11,13 +11,17 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  // Get stored theme or default to light
+  // Get stored theme or default to system preference
   const [theme, setTheme] = useState<Theme>(() => {
     const storedTheme = localStorage.getItem('theme');
-    return (storedTheme as Theme) || 'light';
+    if (storedTheme === 'light' || storedTheme === 'dark') {
+      return storedTheme;
+    }
+    // Check system preference if no stored theme
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
-  // Update theme in localStorage and document class when theme changes
+  // Apply theme to document and localStorage when theme changes
   useEffect(() => {
     localStorage.setItem('theme', theme);
     
@@ -29,16 +33,12 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [theme]);
 
-  // Check system preference on initial load
+  // Listen for system preference changes
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     
-    if (!localStorage.getItem('theme') && mediaQuery.matches) {
-      setTheme('dark');
-    }
-    
-    // Listen for changes to system preference
     const handleChange = (e: MediaQueryListEvent) => {
+      // Only update theme based on system preference if user hasn't manually set it
       if (!localStorage.getItem('theme')) {
         setTheme(e.matches ? 'dark' : 'light');
       }

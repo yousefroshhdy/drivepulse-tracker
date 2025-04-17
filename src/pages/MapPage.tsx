@@ -4,11 +4,13 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { isAuthenticated } from '@/services/authService';
 import AppLayout from '@/components/layout/AppLayout';
 import MapView from '@/components/map/MapView';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const MapPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [title, setTitle] = useState('Live Map');
+  const { theme } = useTheme();
 
   // Check if user is authenticated
   useEffect(() => {
@@ -26,7 +28,7 @@ const MapPage = () => {
   return (
     <AppLayout title={title}>
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-2xl font-bold mb-4">Live Map</h1>
+        <h1 className={`text-2xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : ''}`}>Live Map</h1>
         <MapView />
       </div>
     </AppLayout>

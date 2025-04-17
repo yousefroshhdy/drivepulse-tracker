@@ -13,6 +13,7 @@ import Alerts from "./pages/Alerts";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { isAuthenticated } from "./services/authService";
+import "./App.css";
 
 const queryClient = new QueryClient();
 
@@ -21,7 +22,7 @@ const App = () => (
     <ThemeProvider>
       <TooltipProvider>
         <Toaster />
-        <Sonner />
+        <Sonner theme="system" />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={

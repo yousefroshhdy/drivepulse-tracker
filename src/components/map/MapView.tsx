@@ -4,6 +4,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Vehicle } from '@/services/mockData';
 import { getVehicles, subscribeToVehicleUpdates } from '@/services/vehicleService';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // For demo purposes we're using a public token
 // In a production app, this would come from environment variables
@@ -15,6 +16,7 @@ const MapView = () => {
   const markers = useRef<{ [key: string]: mapboxgl.Marker }>({});
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const { theme } = useTheme();
 
   useEffect(() => {
     // Fetch vehicles
@@ -29,12 +31,14 @@ const MapView = () => {
 
     fetchVehicles();
 
-    // Initialize map
+    // Initialize map with correct style based on theme
     if (!mapContainer.current) return;
     
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v11',
+      style: theme === 'dark' 
+        ? 'mapbox://styles/mapbox/dark-v11' 
+        : 'mapbox://styles/mapbox/light-v11',
       center: [-122.431297, 37.773972], // San Francisco
       zoom: 12
     });
@@ -62,7 +66,7 @@ const MapView = () => {
       }
       unsubscribe();
     };
-  }, []);
+  }, [theme]);
 
   // Update markers when vehicles change
   useEffect(() => {
@@ -145,6 +149,17 @@ const MapView = () => {
       });
     }
   }, [vehicles]);
+
+  // Update map style when theme changes
+  useEffect(() => {
+    if (map.current) {
+      map.current.setStyle(
+        theme === 'dark' 
+          ? 'mapbox://styles/mapbox/dark-v11' 
+          : 'mapbox://styles/mapbox/light-v11'
+      );
+    }
+  }, [theme]);
   
   return (
     <div className="relative h-[calc(100vh-14rem)]">
@@ -157,6 +172,18 @@ const MapView = () => {
         .vehicle-marker:hover {
           transform: scale(1.1);
         }
+        .mapboxgl-popup {
+          z-index: 10;
+        }
+        .mapboxgl-popup-content {
+          ${theme === 'dark' ? 'background-color: #1A1F2C; color: white;' : ''}
+        }
+        .mapboxgl-ctrl-group {
+          ${theme === 'dark' ? 'background-color: #1A1F2C;' : ''}
+        }
+        .mapboxgl-ctrl button {
+          ${theme === 'dark' ? 'filter: invert(1);' : ''}
+        }
         `}
       </style>
       
@@ -164,17 +191,17 @@ const MapView = () => {
       
       {/* Vehicle info panel when selected */}
       {selectedVehicle && (
-        <div className="absolute bottom-4 left-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-md mx-auto">
+        <div className={`absolute bottom-4 left-4 right-4 ${theme === 'dark' ? 'bg-drivepulse-dark text-white' : 'bg-white'} rounded-lg shadow-lg p-4 max-w-md mx-auto`}>
           <div className="flex justify-between items-start">
             <div>
               <h3 className="font-bold text-lg">{selectedVehicle.name}</h3>
-              <p className="text-sm text-gray-500">
+              <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>
                 {selectedVehicle.make} {selectedVehicle.model} • {selectedVehicle.year}
               </p>
             </div>
             <button
               onClick={() => setSelectedVehicle(null)}
-              className="p-1 rounded-full bg-gray-100 hover:bg-gray-200"
+              className={`p-1 rounded-full ${theme === 'dark' ? 'bg-sidebar-accent hover:bg-sidebar-accent-foreground' : 'bg-gray-100 hover:bg-gray-200'}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -184,42 +211,42 @@ const MapView = () => {
           </div>
           
           <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-            <div className="p-2 bg-gray-50 rounded">
-              <span className="text-gray-500">Status:</span>
+            <div className={`p-2 ${theme === 'dark' ? 'bg-sidebar-accent' : 'bg-gray-50'} rounded`}>
+              <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}>Status:</span>
               <span className={`ml-1 font-medium 
-                ${selectedVehicle.status === 'driving' ? 'text-green-600' : 
-                selectedVehicle.status === 'parked' ? 'text-blue-600' : 'text-gray-600'}`}>
+                ${selectedVehicle.status === 'driving' ? 'text-green-500' : 
+                selectedVehicle.status === 'parked' ? 'text-blue-500' : 'text-gray-400'}`}>
                 {selectedVehicle.status.charAt(0).toUpperCase() + selectedVehicle.status.slice(1)}
               </span>
             </div>
             
-            <div className="p-2 bg-gray-50 rounded">
-              <span className="text-gray-500">License:</span>
+            <div className={`p-2 ${theme === 'dark' ? 'bg-sidebar-accent' : 'bg-gray-50'} rounded`}>
+              <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}>License:</span>
               <span className="ml-1 font-medium">{selectedVehicle.licensePlate}</span>
             </div>
             
             {selectedVehicle.status === 'driving' && selectedVehicle.lastPosition?.speed && (
-              <div className="p-2 bg-gray-50 rounded">
-                <span className="text-gray-500">Speed:</span>
+              <div className={`p-2 ${theme === 'dark' ? 'bg-sidebar-accent' : 'bg-gray-50'} rounded`}>
+                <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}>Speed:</span>
                 <span className="ml-1 font-medium">
                   {Math.round(selectedVehicle.lastPosition.speed)} mph
                 </span>
               </div>
             )}
             
-            <div className="p-2 bg-gray-50 rounded">
-              <span className="text-gray-500">Fuel:</span>
+            <div className={`p-2 ${theme === 'dark' ? 'bg-sidebar-accent' : 'bg-gray-50'} rounded`}>
+              <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}>Fuel:</span>
               <span className="ml-1 font-medium">
                 {selectedVehicle.fuelLevel ? Math.round(selectedVehicle.fuelLevel * 100) : 'N/A'}%
               </span>
             </div>
             
             {selectedVehicle.drivingScore && (
-              <div className="p-2 bg-gray-50 rounded col-span-2">
-                <span className="text-gray-500">Driving Score:</span>
+              <div className={`p-2 ${theme === 'dark' ? 'bg-sidebar-accent' : 'bg-gray-50'} rounded col-span-2`}>
+                <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}>Driving Score:</span>
                 <span className={`ml-1 font-medium 
-                  ${selectedVehicle.drivingScore >= 90 ? 'text-green-600' : 
-                  selectedVehicle.drivingScore >= 70 ? 'text-yellow-600' : 'text-red-600'}`}>
+                  ${selectedVehicle.drivingScore >= 90 ? 'text-green-500' : 
+                  selectedVehicle.drivingScore >= 70 ? 'text-yellow-500' : 'text-red-500'}`}>
                   {selectedVehicle.drivingScore}
                 </span>
               </div>
