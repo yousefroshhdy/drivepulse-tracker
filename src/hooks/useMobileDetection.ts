@@ -1,6 +1,16 @@
 
 import { useState, useEffect } from 'react';
 
+// Extend the Window interface to include Capacitor
+declare global {
+  interface Window {
+    Capacitor?: {
+      isNativePlatform(): boolean;
+      getPlatform(): string;
+    };
+  }
+}
+
 export const useMobileDetection = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [isNative, setIsNative] = useState(false);
