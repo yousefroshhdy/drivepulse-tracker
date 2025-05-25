@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAuthenticated } from '@/services/authService';
@@ -9,6 +8,7 @@ import { vehicleService } from '@/services/supabaseVehicleService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Eye, Smartphone, Activity, AlertTriangle } from 'lucide-react';
+import FacialLandmarkDetector from '@/components/drowsiness/FacialLandmarkDetector';
 
 const DriversMonitor = () => {
   const navigate = useNavigate();
@@ -38,12 +38,12 @@ const DriversMonitor = () => {
     }
   };
 
-  const handleDrowsinessDetection = (level: string, confidence: number) => {
+  const handleDrowsinessDetection = (state: string, ear: number) => {
     const alert = {
       id: Date.now(),
       type: 'drowsiness',
-      level,
-      confidence,
+      state,
+      ear,
       timestamp: new Date(),
       vehicleId: selectedVehicleId
     };
@@ -82,7 +82,7 @@ const DriversMonitor = () => {
           
           <TabsContent value="drowsiness" className="space-y-4">
             <div className="grid md:grid-cols-2 gap-6">
-              <DrowsinessDetector
+              <FacialLandmarkDetector
                 vehicleId={selectedVehicleId}
                 isActive={true}
                 onDetection={handleDrowsinessDetection}
@@ -90,39 +90,43 @@ const DriversMonitor = () => {
               
               <Card>
                 <CardHeader>
-                  <CardTitle>Detection Info</CardTitle>
+                  <CardTitle>Advanced Detection Info</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="text-sm space-y-2">
-                    <p className="font-medium">How it works:</p>
+                    <p className="font-medium">Facial Landmark Detection:</p>
                     <ul className="text-gray-600 space-y-1">
-                      <li>• Monitors eye movements and facial expressions</li>
-                      <li>• Calculates Eye Aspect Ratio (EAR)</li>
-                      <li>• Detects prolonged eye closure</li>
-                      <li>• Triggers alerts based on drowsiness levels</li>
+                      <li>• Uses 68-point facial landmark model</li>
+                      <li>• Calculates Eye Aspect Ratio (EAR) in real-time</li>
+                      <li>• Frame-based state confirmation</li>
+                      <li>• Audio alarm for sleeping detection</li>
+                      <li>• Automatic event logging to database</li>
                     </ul>
                   </div>
                   
                   <div className="text-sm space-y-2">
-                    <p className="font-medium">Drowsiness Levels:</p>
+                    <p className="font-medium">Detection Algorithm:</p>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-green-500 rounded"></div>
-                        <span>Alert - Normal driving state</span>
+                        <span>Awake: EAR &gt; 0.25 (Normal state)</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-yellow-500 rounded"></div>
-                        <span>Mild - Early signs of fatigue</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-orange-500 rounded"></div>
-                        <span>Moderate - Noticeable drowsiness</span>
+                        <span>Drowsy: EAR 0.20-0.25 for 15+ frames</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-red-500 rounded"></div>
-                        <span>Severe - Immediate break needed</span>
+                        <span>Sleeping: EAR &lt; 0.20 for 30+ frames</span>
                       </div>
                     </div>
+                  </div>
+                  
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <strong>Note:</strong> This implementation simulates the facial landmark detection. 
+                      In production, integrate with OpenCV.js and dlib for accurate face detection.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -171,7 +175,7 @@ const DriversMonitor = () => {
           <TabsContent value="alerts" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Recent Alerts</CardTitle>
+                <CardTitle>Recent Detection Alerts</CardTitle>
               </CardHeader>
               <CardContent>
                 {recentAlerts.length > 0 ? (
@@ -183,15 +187,15 @@ const DriversMonitor = () => {
                       >
                         <div className="flex items-center gap-3">
                           <AlertTriangle className={`h-5 w-5 ${
-                            alert.level === 'severe' ? 'text-red-500' :
-                            alert.level === 'moderate' ? 'text-orange-500' :
-                            alert.level === 'mild' ? 'text-yellow-500' :
+                            alert.state === 'sleeping' ? 'text-red-500' :
+                            alert.state === 'drowsy' ? 'text-yellow-500' :
                             'text-green-500'
                           }`} />
                           <div>
-                            <p className="font-medium capitalize">{alert.level} Drowsiness</p>
+                            <p className="font-medium capitalize">{alert.state || alert.level} Detection</p>
                             <p className="text-sm text-gray-600">
-                              Confidence: {(alert.confidence * 100).toFixed(1)}%
+                              {alert.ear ? `EAR: ${alert.ear.toFixed(3)}` : 
+                               alert.confidence ? `Confidence: ${(alert.confidence * 100).toFixed(1)}%` : ''}
                             </p>
                           </div>
                         </div>
