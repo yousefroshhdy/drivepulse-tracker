@@ -3,7 +3,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAuthenticated } from '@/services/authService';
 import MobileNavbar from './MobileNavbar';
-import { Bell, Car, MapPin, Settings, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Sidebar from './Sidebar';
@@ -24,13 +24,6 @@ const AppLayout = ({ children, title = 'DrivePulse' }: AppLayoutProps) => {
     }
   }, [navigate]);
 
-  const navItems = [
-    { name: 'Dashboard', icon: <Car size={20} />, path: '/dashboard' },
-    { name: 'Map View', icon: <MapPin size={20} />, path: '/map' },
-    { name: 'Alerts', icon: <Bell size={20} />, path: '/alerts' },
-    { name: 'Settings', icon: <Settings size={20} />, path: '/settings' },
-  ];
-
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Mobile Header */}
@@ -45,7 +38,7 @@ const AppLayout = ({ children, title = 'DrivePulse' }: AppLayoutProps) => {
               </SheetTrigger>
               <SheetContent side="left" className="p-0 w-[240px]">
                 <ScrollArea className="h-full">
-                  <Sidebar navItems={navItems} onNavClick={() => setOpen(false)} />
+                  <Sidebar />
                 </ScrollArea>
               </SheetContent>
             </Sheet>
@@ -57,7 +50,7 @@ const AppLayout = ({ children, title = 'DrivePulse' }: AppLayoutProps) => {
       {/* Desktop Sidebar - Hidden on Mobile */}
       <div className="hidden md:block w-64 fixed inset-y-0">
         <div className="h-full bg-white border-r">
-          <Sidebar navItems={navItems} />
+          <Sidebar />
         </div>
       </div>
 
@@ -69,7 +62,7 @@ const AppLayout = ({ children, title = 'DrivePulse' }: AppLayoutProps) => {
       </main>
 
       {/* Mobile Navigation */}
-      <MobileNavbar navItems={navItems} />
+      <MobileNavbar />
     </div>
   );
 };

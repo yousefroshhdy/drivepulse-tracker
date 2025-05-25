@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { vehicleService } from '@/services/supabaseVehicleService';
 import { useToast } from '@/hooks/use-toast';
@@ -8,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MobileGPSTrackerProps {
   onPositionUpdate?: (position: { lat: number; lng: number; speed?: number }) => void;
@@ -60,13 +60,21 @@ const MobileGPSTracker: React.FC<MobileGPSTrackerProps> = ({ onPositionUpdate })
       setIsCreatingVehicle(true);
       const deviceId = `mobile-${Date.now()}`;
       
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError('User not authenticated');
+        return;
+      }
+      
       const vehicle = await vehicleService.createVehicle({
         name: newVehicleName,
         make: 'Mobile',
         model: 'GPS Tracker',
         year: new Date().getFullYear(),
         device_id: deviceId,
-        license_plate: `MOB-${deviceId.slice(-4).toUpperCase()}`
+        license_plate: `MOB-${deviceId.slice(-4).toUpperCase()}`,
+        user_id: user.id
       });
       
       setSelectedVehicleId(vehicle.id);
