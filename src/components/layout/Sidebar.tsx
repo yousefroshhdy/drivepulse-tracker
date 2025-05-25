@@ -1,88 +1,64 @@
 
-import { NavLink } from 'react-router-dom';
-import { ReactElement } from 'react';
-import { Car } from 'lucide-react';
-import { getCurrentUser } from '@/services/authService';
+import { Link, useLocation } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+import { 
+  Car, 
+  Map, 
+  AlertTriangle, 
+  Settings, 
+  Home,
+  Activity
+} from 'lucide-react';
 
-interface NavItem {
-  name: string;
-  icon: ReactElement;
-  path: string;
-}
+const navigation = [
+  { name: 'Dashboard', href: '/dashboard', icon: Home },
+  { name: 'Live Map', href: '/map', icon: Map },
+  { name: 'Driver Monitor', href: '/monitor', icon: Activity },
+  { name: 'Alerts', href: '/alerts', icon: AlertTriangle },
+  { name: 'Settings', href: '/settings', icon: Settings },
+];
 
-interface SidebarProps {
-  navItems: NavItem[];
-  onNavClick?: () => void;
-}
-
-const Sidebar = ({ navItems, onNavClick }: SidebarProps) => {
-  const user = getCurrentUser();
+const Sidebar = () => {
+  const location = useLocation();
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Sidebar Header */}
-      <div className="p-6 border-b">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-drivepulse-blue rounded-md">
-            <Car className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <h2 className="font-bold text-lg text-gray-900">DrivePulse</h2>
-            <p className="text-xs text-gray-500">Driver Monitoring</p>
-          </div>
+    <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
+      <div className="flex flex-col flex-grow pt-5 bg-white dark:bg-gray-900 overflow-y-auto border-r border-gray-200 dark:border-gray-700">
+        <div className="flex items-center flex-shrink-0 px-4">
+          <Car className="h-8 w-8 text-blue-600" />
+          <span className="ml-2 text-xl font-bold text-gray-900 dark:text-white">
+            DrivePulse
+          </span>
         </div>
-      </div>
-
-      {/* User Info */}
-      {user && (
-        <div className="p-4 border-b">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
-              {user.avatar ? (
-                <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-drivepulse-teal text-white font-medium">
-                  {user.name.charAt(0)}
-                </div>
-              )}
-            </div>
-            <div>
-              <div className="font-medium text-sm">{user.name}</div>
-              <div className="text-xs text-gray-500">{user.email}</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Navigation Links */}
-      <div className="flex-1 py-4">
-        <nav className="space-y-1 px-2">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.name}
-              to={item.path}
-              onClick={onNavClick}
-              className={({ isActive }) =>
-                `flex items-center px-3 py-2.5 text-sm font-medium rounded-md ${
-                  isActive
-                    ? 'bg-drivepulse-blue bg-opacity-10 text-drivepulse-blue'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`
-              }
-            >
-              <span className="mr-3">{item.icon}</span>
-              {item.name}
-            </NavLink>
-          ))}
-        </nav>
-      </div>
-
-      {/* Footer */}
-      <div className="p-4 border-t mt-auto">
-        <div className="text-xs text-gray-500 text-center">
-          &copy; {new Date().getFullYear()} DrivePulse
-          <br />
-          <span className="text-xs">Version 1.0.0</span>
+        <div className="mt-5 flex-grow flex flex-col">
+          <nav className="flex-1 px-2 pb-4 space-y-1">
+            {navigation.map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={cn(
+                    isActive
+                      ? 'bg-blue-50 dark:bg-blue-900/20 border-r-2 border-blue-600 text-blue-600 dark:text-blue-400'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white',
+                    'group flex items-center px-2 py-2 text-sm font-medium rounded-l-md transition-colors'
+                  )}
+                >
+                  <item.icon
+                    className={cn(
+                      isActive
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-400',
+                      'mr-3 flex-shrink-0 h-6 w-6 transition-colors'
+                    )}
+                    aria-hidden="true"
+                  />
+                  {item.name}
+                </Link>
+              );
+            })}
+          </nav>
         </div>
       </div>
     </div>

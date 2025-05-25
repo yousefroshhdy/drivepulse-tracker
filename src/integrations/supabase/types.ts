@@ -9,7 +9,213 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      driving_sessions: {
+        Row: {
+          avg_speed: number | null
+          drowsiness_alerts: number | null
+          end_time: string | null
+          id: string
+          is_active: boolean | null
+          max_speed: number | null
+          start_time: string
+          total_distance: number | null
+          user_id: string
+          vehicle_id: string
+        }
+        Insert: {
+          avg_speed?: number | null
+          drowsiness_alerts?: number | null
+          end_time?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_speed?: number | null
+          start_time?: string
+          total_distance?: number | null
+          user_id: string
+          vehicle_id: string
+        }
+        Update: {
+          avg_speed?: number | null
+          drowsiness_alerts?: number | null
+          end_time?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_speed?: number | null
+          start_time?: string
+          total_distance?: number | null
+          user_id?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driving_sessions_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drowsiness_events: {
+        Row: {
+          alert_triggered: boolean | null
+          confidence: number | null
+          drowsiness_level: string
+          eye_aspect_ratio: number | null
+          id: string
+          mouth_aspect_ratio: number | null
+          timestamp: string
+          user_id: string
+          vehicle_id: string
+        }
+        Insert: {
+          alert_triggered?: boolean | null
+          confidence?: number | null
+          drowsiness_level: string
+          eye_aspect_ratio?: number | null
+          id?: string
+          mouth_aspect_ratio?: number | null
+          timestamp?: string
+          user_id: string
+          vehicle_id: string
+        }
+        Update: {
+          alert_triggered?: boolean | null
+          confidence?: number | null
+          drowsiness_level?: string
+          eye_aspect_ratio?: number | null
+          id?: string
+          mouth_aspect_ratio?: number | null
+          timestamp?: string
+          user_id?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drowsiness_events_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      vehicle_positions: {
+        Row: {
+          accuracy: number | null
+          altitude: number | null
+          heading: number | null
+          id: string
+          latitude: number
+          longitude: number
+          speed: number | null
+          timestamp: string
+          vehicle_id: string
+        }
+        Insert: {
+          accuracy?: number | null
+          altitude?: number | null
+          heading?: number | null
+          id?: string
+          latitude: number
+          longitude: number
+          speed?: number | null
+          timestamp?: string
+          vehicle_id: string
+        }
+        Update: {
+          accuracy?: number | null
+          altitude?: number | null
+          heading?: number | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          speed?: number | null
+          timestamp?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_positions_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicles: {
+        Row: {
+          created_at: string
+          device_id: string | null
+          id: string
+          is_active: boolean | null
+          license_plate: string | null
+          make: string
+          model: string
+          name: string
+          updated_at: string
+          user_id: string
+          year: number | null
+        }
+        Insert: {
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          license_plate?: string | null
+          make: string
+          model: string
+          name: string
+          updated_at?: string
+          user_id: string
+          year?: number | null
+        }
+        Update: {
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          license_plate?: string | null
+          make?: string
+          model?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+          year?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +10,7 @@ import MapPage from "./pages/MapPage";
 import VehicleDetailPage from "./pages/VehicleDetailPage";
 import Alerts from "./pages/Alerts";
 import Settings from "./pages/Settings";
+import DriversMonitor from "./pages/DriversMonitor";
 import NotFound from "./pages/NotFound";
 import { isAuthenticated } from "./services/authService";
 import { useMobileDetection } from "./hooks/useMobileDetection";
@@ -54,6 +54,7 @@ const App = () => {
                 <Route path="/map" element={<MapPage />} />
                 <Route path="/vehicle/:id" element={<VehicleDetailPage />} />
                 <Route path="/alerts" element={<Alerts />} />
+                <Route path="/monitor" element={<DriversMonitor />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
