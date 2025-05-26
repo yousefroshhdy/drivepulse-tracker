@@ -2,14 +2,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAuthenticated } from '@/services/authService';
 import AppLayout from '@/components/layout/AppLayout';
-import DrowsinessDetector from '@/components/drowsiness/DrowsinessDetector';
 import MobileGPSTracker from '@/components/tracking/MobileGPSTracker';
 import { vehicleService } from '@/services/supabaseVehicleService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Eye, Smartphone, Activity, AlertTriangle } from 'lucide-react';
-import FacialLandmarkDetector from '@/components/drowsiness/FacialLandmarkDetector';
-import YoloFacialDetector from '@/components/drowsiness/YoloFacialDetector';
+import MediaPipeDrowsinessDetector from '@/components/drowsiness/MediaPipeDrowsinessDetector';
 
 const DriversMonitor = () => {
   const navigate = useNavigate();
@@ -69,7 +67,7 @@ const DriversMonitor = () => {
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="drowsiness" className="flex items-center gap-2">
               <Eye className="h-4 w-4" />
-              Drowsiness Detection
+              Eye Detection
             </TabsTrigger>
             <TabsTrigger value="gps" className="flex items-center gap-2">
               <Smartphone className="h-4 w-4" />
@@ -83,7 +81,7 @@ const DriversMonitor = () => {
           
           <TabsContent value="drowsiness" className="space-y-4">
             <div className="grid md:grid-cols-2 gap-6">
-              <YoloFacialDetector
+              <MediaPipeDrowsinessDetector
                 vehicleId={selectedVehicleId}
                 isActive={true}
                 onDetection={handleDrowsinessDetection}
@@ -91,35 +89,35 @@ const DriversMonitor = () => {
               
               <Card>
                 <CardHeader>
-                  <CardTitle>Enhanced Detection Info</CardTitle>
+                  <CardTitle>MediaPipe Detection Info</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="text-sm space-y-2">
-                    <p className="font-medium">Enhanced Face Detection:</p>
+                    <p className="font-medium">MediaPipe Features:</p>
                     <ul className="text-gray-600 space-y-1">
-                      <li>• Advanced face detection algorithm</li>
-                      <li>• Real-time eye landmark tracking</li>
-                      <li>• Improved Eye Aspect Ratio (EAR) calculation</li>
-                      <li>• Enhanced audio alerts with different patterns</li>
-                      <li>• More sensitive drowsiness detection</li>
-                      <li>• Automatic event logging to database</li>
+                      <li>• 468 facial landmark detection</li>
+                      <li>• Real-time eye state tracking</li>
+                      <li>• Accurate Eye Aspect Ratio calculation</li>
+                      <li>• 2-second detection delay</li>
+                      <li>• Optimized for desktop/laptop cameras</li>
+                      <li>• Cross-platform Web Audio alerts</li>
                     </ul>
                   </div>
                   
                   <div className="text-sm space-y-2">
-                    <p className="font-medium">Enhanced Algorithm:</p>
+                    <p className="font-medium">Detection Algorithm:</p>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-green-500 rounded"></div>
-                        <span>Awake: EAR &gt; 0.22 (Normal state)</span>
+                        <span>Awake: EAR &gt; 0.22</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-yellow-500 rounded"></div>
-                        <span>Drowsy: EAR 0.18-0.22 for 3+ frames</span>
+                        <span>Drowsy: EAR 0.18-0.22 for 2+ seconds</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-red-500 rounded"></div>
-                        <span>Sleeping: EAR &lt; 0.18 for 3+ frames</span>
+                        <span>Sleeping: EAR &lt; 0.18 for 2+ seconds</span>
                       </div>
                     </div>
                   </div>
@@ -127,17 +125,17 @@ const DriversMonitor = () => {
                   <div className="text-sm space-y-2">
                     <p className="font-medium">Audio Alerts:</p>
                     <ul className="text-gray-600 space-y-1">
-                      <li>• Drowsy: Triple beep pattern (500Hz)</li>
+                      <li>• Drowsy: Triple beep (500Hz)</li>
                       <li>• Sleeping: Continuous alarm (1000Hz)</li>
-                      <li>• Cross-platform Web Audio API</li>
-                      <li>• Works on mobile devices</li>
+                      <li>• Automatic event logging</li>
+                      <li>• Toast notifications</li>
                     </ul>
                   </div>
                   
                   <div className="p-3 bg-blue-50 rounded-lg">
                     <p className="text-sm text-blue-800">
-                      <strong>Enhanced:</strong> This version uses more sophisticated face detection 
-                      with improved eye tracking for better accuracy in detecting drowsiness states.
+                      <strong>MediaPipe:</strong> This uses Google's MediaPipe Face Mesh for 
+                      highly accurate facial landmark detection and real eye state monitoring.
                     </p>
                   </div>
                 </CardContent>
