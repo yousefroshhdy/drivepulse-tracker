@@ -1,6 +1,5 @@
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { FaceMesh } from '@mediapipe/face_mesh';
 import { vehicleService } from '@/services/supabaseVehicleService';
 import { useToast } from '@/hooks/use-toast';
 import { AlertTriangle, Eye, Camera, CameraOff } from 'lucide-react';
@@ -24,10 +23,11 @@ const MediaPipeDrowsinessDetector: React.FC<MediaPipeDrowsinessDetectorProps> = 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const faceMeshRef = useRef<FaceMesh | null>(null);
+  const faceMeshRef = useRef<any>(null);
   const frameCountRef = useRef(0);
   const closedFramesRef = useRef(0);
   const drowsyFramesRef = useRef(0);
+  const animationFrameRef = useRef<number>();
   
   const [isDetecting, setIsDetecting] = useState(false);
   const [currentState, setCurrentState] = useState<DrowsinessState>('awake');
@@ -35,132 +35,147 @@ const MediaPipeDrowsinessDetector: React.FC<MediaPipeDrowsinessDetectorProps> = 
   const [hasCamera, setHasCamera] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [faceDetected, setFaceDetected] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   
   const { toast } = useToast();
 
-  // Eye landmark indices for MediaPipe Face Mesh
-  const LEFT_EYE = [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246];
-  const RIGHT_EYE = [362, 382, 381, 380, 374, 373, 390, 249, 263, 466, 388, 387, 386, 385, 384, 398];
+  // Enhanced eye landmark indices for MediaPipe Face Mesh (468 landmarks)
+  const LEFT_EYE_POINTS = [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246];
+  const RIGHT_EYE_POINTS = [362, 382, 381, 380, 374, 373, 390, 249, 263, 466, 388, 387, 386, 385, 384, 398];
+  
+  // More precise eye corner and eyelid points
+  const LEFT_EYE_CORNERS = [33, 133]; // inner, outer corner
+  const LEFT_EYE_VERTICAL = [159, 145]; // top, bottom eyelid center
+  const RIGHT_EYE_CORNERS = [362, 263]; // inner, outer corner  
+  const RIGHT_EYE_VERTICAL = [386, 374]; // top, bottom eyelid center
 
-  // Calculate Eye Aspect Ratio using MediaPipe landmarks
+  // Calculate Enhanced Eye Aspect Ratio with multiple measurements
   const calculateEAR = useCallback((landmarks: any[]) => {
-    const getPoint = (idx: number) => landmarks[idx];
-    
-    // Calculate EAR for left eye
-    const leftEyePoints = LEFT_EYE.map(idx => getPoint(idx));
-    const leftEAR = calculateSingleEyeEAR(leftEyePoints);
-    
-    // Calculate EAR for right eye
-    const rightEyePoints = RIGHT_EYE.map(idx => getPoint(idx));
-    const rightEAR = calculateSingleEyeEAR(rightEyePoints);
-    
-    // Return average EAR
-    return (leftEAR + rightEAR) / 2;
+    try {
+      // Get landmark points
+      const getPoint = (idx: number) => landmarks[idx];
+      
+      // Left eye EAR calculation with multiple vertical measurements
+      const leftP1 = getPoint(LEFT_EYE_CORNERS[0]); // inner corner
+      const leftP2 = getPoint(LEFT_EYE_CORNERS[1]); // outer corner
+      const leftP3 = getPoint(159); // top eyelid
+      const leftP4 = getPoint(145); // bottom eyelid
+      const leftP5 = getPoint(158); // top eyelid inner
+      const leftP6 = getPoint(153); // bottom eyelid inner
+      
+      // Right eye EAR calculation with multiple vertical measurements
+      const rightP1 = getPoint(RIGHT_EYE_CORNERS[0]); // inner corner
+      const rightP2 = getPoint(RIGHT_EYE_CORNERS[1]); // outer corner
+      const rightP3 = getPoint(386); // top eyelid
+      const rightP4 = getPoint(374); // bottom eyelid
+      const rightP5 = getPoint(387); // top eyelid inner
+      const rightP6 = getPoint(373); // bottom eyelid inner
+      
+      // Calculate distances
+      const distance = (p1: any, p2: any) => 
+        Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+      
+      // Left eye measurements
+      const leftVertical1 = distance(leftP3, leftP4);
+      const leftVertical2 = distance(leftP5, leftP6);
+      const leftHorizontal = distance(leftP1, leftP2);
+      const leftEAR = (leftVertical1 + leftVertical2) / (2.0 * leftHorizontal);
+      
+      // Right eye measurements
+      const rightVertical1 = distance(rightP3, rightP4);
+      const rightVertical2 = distance(rightP5, rightP6);
+      const rightHorizontal = distance(rightP1, rightP2);
+      const rightEAR = (rightVertical1 + rightVertical2) / (2.0 * rightHorizontal);
+      
+      // Return average EAR with higher sensitivity for closed eyes
+      const avgEAR = (leftEAR + rightEAR) / 2;
+      console.log(`EAR: ${avgEAR.toFixed(3)} (L: ${leftEAR.toFixed(3)}, R: ${rightEAR.toFixed(3)})`);
+      
+      return avgEAR;
+    } catch (error) {
+      console.error('EAR calculation error:', error);
+      return 0.25; // Default to "awake" state on error
+    }
   }, []);
 
-  const calculateSingleEyeEAR = (eyePoints: any[]) => {
-    // Get key points for EAR calculation
-    const p1 = eyePoints[1]; // Top eyelid
-    const p2 = eyePoints[5]; // Bottom eyelid
-    const p3 = eyePoints[2]; // Top eyelid
-    const p4 = eyePoints[4]; // Bottom eyelid
-    const p5 = eyePoints[0]; // Left corner
-    const p6 = eyePoints[3]; // Right corner
-    
-    // Calculate distances
-    const vertical1 = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
-    const vertical2 = Math.sqrt(Math.pow(p3.x - p4.x, 2) + Math.pow(p3.y - p4.y, 2));
-    const horizontal = Math.sqrt(Math.pow(p5.x - p6.x, 2) + Math.pow(p5.y - p6.y, 2));
-    
-    // Calculate EAR
-    return (vertical1 + vertical2) / (2.0 * horizontal);
-  };
-
-  // Play audio alert
+  // Enhanced audio alert system
   const playAlert = useCallback((type: 'drowsy' | 'sleeping') => {
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
       
       if (type === 'drowsy') {
-        // Triple beep for drowsy
-        oscillator.frequency.setValueAtTime(500, audioContext.currentTime);
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-        oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.1);
-        
-        setTimeout(() => {
-          const osc2 = audioContext.createOscillator();
-          const gain2 = audioContext.createGain();
-          osc2.connect(gain2);
-          gain2.connect(audioContext.destination);
-          osc2.frequency.setValueAtTime(500, audioContext.currentTime);
-          gain2.gain.setValueAtTime(0.3, audioContext.currentTime);
-          osc2.start();
-          osc2.stop(audioContext.currentTime + 0.1);
-        }, 200);
-        
-        setTimeout(() => {
-          const osc3 = audioContext.createOscillator();
-          const gain3 = audioContext.createGain();
-          osc3.connect(gain3);
-          gain3.connect(audioContext.destination);
-          osc3.frequency.setValueAtTime(500, audioContext.currentTime);
-          gain3.gain.setValueAtTime(0.3, audioContext.currentTime);
-          osc3.start();
-          osc3.stop(audioContext.currentTime + 0.1);
-        }, 400);
+        // Triple beep pattern for drowsy
+        [0, 0.2, 0.4].forEach((delay, index) => {
+          setTimeout(() => {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(500, audioContext.currentTime);
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.1);
+          }, delay * 1000);
+        });
       } else {
         // Continuous alarm for sleeping
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
         oscillator.frequency.setValueAtTime(1000, audioContext.currentTime);
         gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+        
         oscillator.start();
-        oscillator.stop(audioContext.currentTime + 1);
+        oscillator.stop(audioContext.currentTime + 1.5);
       }
     } catch (error) {
       console.error('Audio alert failed:', error);
     }
   }, []);
 
-  // Process detection results
+  // Enhanced detection logic with improved thresholds
   const processDetection = useCallback((ear: number) => {
     frameCountRef.current++;
     setEyeAspectRatio(ear);
     
     let newState: DrowsinessState = 'awake';
     
-    // Determine state based on EAR thresholds
-    if (ear < 0.18) {
-      // Eyes likely closed
+    // Enhanced thresholds for better detection
+    if (ear < 0.15) {
+      // Eyes definitely closed - more sensitive threshold
       closedFramesRef.current++;
       drowsyFramesRef.current = 0;
       
-      // After 2 seconds at 10fps = 20 frames
-      if (closedFramesRef.current >= 20) {
+      // Faster detection: 1.5 seconds at ~15fps = 22 frames
+      if (closedFramesRef.current >= 22) {
         newState = 'sleeping';
       }
-    } else if (ear < 0.22) {
-      // Eyes partially closed (drowsy)
+    } else if (ear < 0.20) {
+      // Eyes partially closed (drowsy) - more sensitive
       drowsyFramesRef.current++;
       closedFramesRef.current = 0;
       
-      // After 2 seconds at 10fps = 20 frames
-      if (drowsyFramesRef.current >= 20) {
+      // 2 seconds at ~15fps = 30 frames
+      if (drowsyFramesRef.current >= 30) {
         newState = 'drowsy';
       }
     } else {
-      // Eyes open
+      // Eyes clearly open
       closedFramesRef.current = 0;
       drowsyFramesRef.current = 0;
       newState = 'awake';
     }
     
-    // Update state and trigger alerts
+    // State change detection and alerts
     if (newState !== currentState) {
+      console.log(`State changed: ${currentState} -> ${newState} (EAR: ${ear.toFixed(3)})`);
       setCurrentState(newState);
       
       if (newState === 'sleeping') {
@@ -171,7 +186,6 @@ const MediaPipeDrowsinessDetector: React.FC<MediaPipeDrowsinessDetectorProps> = 
           variant: 'destructive',
         });
         
-        // Record event
         vehicleService.recordDrowsinessEvent({
           vehicle_id: vehicleId,
           drowsiness_level: 'severe',
@@ -189,7 +203,6 @@ const MediaPipeDrowsinessDetector: React.FC<MediaPipeDrowsinessDetectorProps> = 
           variant: 'destructive',
         });
         
-        // Record event
         vehicleService.recordDrowsinessEvent({
           vehicle_id: vehicleId,
           drowsiness_level: 'moderate',
@@ -204,66 +217,117 @@ const MediaPipeDrowsinessDetector: React.FC<MediaPipeDrowsinessDetectorProps> = 
     }
   }, [currentState, vehicleId, playAlert, toast, onDetection]);
 
-  // Initialize MediaPipe Face Mesh
-  const initializeFaceMesh = useCallback(() => {
-    if (faceMeshRef.current) return;
+  // Load MediaPipe dynamically
+  const loadMediaPipe = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     
-    const faceMesh = new FaceMesh({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-    });
-    
-    faceMesh.setOptions({
-      maxNumFaces: 1,
-      refineLandmarks: true,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5
-    });
-    
-    faceMesh.onResults((results) => {
-      setFaceDetected(results.multiFaceLandmarks.length > 0);
-      
-      if (results.multiFaceLandmarks.length > 0) {
-        const landmarks = results.multiFaceLandmarks[0];
-        const ear = calculateEAR(landmarks);
-        processDetection(ear);
-        
-        // Draw landmarks on canvas
-        if (canvasRef.current) {
-          const canvas = canvasRef.current;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw eye landmarks
-            ctx.fillStyle = '#00ff00';
-            LEFT_EYE.forEach(idx => {
-              const point = landmarks[idx];
-              ctx.fillRect(point.x * canvas.width - 2, point.y * canvas.height - 2, 4, 4);
-            });
-            
-            ctx.fillStyle = '#0000ff';
-            RIGHT_EYE.forEach(idx => {
-              const point = landmarks[idx];
-              ctx.fillRect(point.x * canvas.width - 2, point.y * canvas.height - 2, 4, 4);
-            });
+    try {
+      // Load MediaPipe scripts dynamically
+      const loadScript = (src: string): Promise<void> => {
+        return new Promise((resolve, reject) => {
+          if (document.querySelector(`script[src="${src}"]`)) {
+            resolve();
+            return;
           }
-        }
+          
+          const script = document.createElement('script');
+          script.src = src;
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error(`Failed to load ${src}`));
+          document.head.appendChild(script);
+        });
+      };
+
+      // Load MediaPipe dependencies
+      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js');
+      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js');
+      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js');
+      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js');
+
+      // Wait a bit for scripts to initialize
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Initialize Face Mesh
+      if (typeof (window as any).FaceMesh !== 'undefined') {
+        const faceMesh = new (window as any).FaceMesh({
+          locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        });
+
+        faceMesh.setOptions({
+          maxNumFaces: 1,
+          refineLandmarks: true,
+          minDetectionConfidence: 0.7,
+          minTrackingConfidence: 0.5
+        });
+
+        faceMesh.onResults((results: any) => {
+          const hasFace = results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0;
+          setFaceDetected(hasFace);
+          
+          if (hasFace && isDetecting) {
+            const landmarks = results.multiFaceLandmarks[0];
+            const ear = calculateEAR(landmarks);
+            processDetection(ear);
+            
+            // Draw landmarks on canvas
+            drawLandmarks(landmarks);
+          }
+        });
+
+        faceMeshRef.current = faceMesh;
+        console.log('MediaPipe Face Mesh initialized successfully');
+      } else {
+        throw new Error('MediaPipe Face Mesh not available');
       }
+    } catch (error) {
+      console.error('MediaPipe loading error:', error);
+      setError('Failed to load face detection. Please refresh and try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [calculateEAR, processDetection, isDetecting]);
+
+  // Draw eye landmarks on canvas
+  const drawLandmarks = useCallback((landmarks: any[]) => {
+    if (!canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw left eye landmarks (green)
+    ctx.fillStyle = '#00ff00';
+    LEFT_EYE_POINTS.forEach(idx => {
+      const point = landmarks[idx];
+      ctx.beginPath();
+      ctx.arc(point.x * canvas.width, point.y * canvas.height, 2, 0, 2 * Math.PI);
+      ctx.fill();
     });
     
-    faceMeshRef.current = faceMesh;
-  }, [calculateEAR, processDetection]);
+    // Draw right eye landmarks (blue)
+    ctx.fillStyle = '#0000ff';
+    RIGHT_EYE_POINTS.forEach(idx => {
+      const point = landmarks[idx];
+      ctx.beginPath();
+      ctx.arc(point.x * canvas.width, point.y * canvas.height, 2, 0, 2 * Math.PI);
+      ctx.fill();
+    });
+  }, []);
 
-  // Start camera
+  // Start camera with enhanced settings
   const startCamera = useCallback(async () => {
     try {
       setError(null);
+      
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
-          width: 640, 
-          height: 480,
+          width: { ideal: 640 },
+          height: { ideal: 480 },
           facingMode: 'user',
-          frameRate: 10 // Optimize for intermediate speed
+          frameRate: { ideal: 15, max: 30 }
         } 
       });
       
@@ -274,65 +338,67 @@ const MediaPipeDrowsinessDetector: React.FC<MediaPipeDrowsinessDetectorProps> = 
         await videoRef.current.play();
         setHasCamera(true);
         
-        // Initialize MediaPipe
-        initializeFaceMesh();
+        // Load MediaPipe after camera is ready
+        await loadMediaPipe();
       }
     } catch (err) {
       console.error('Camera access error:', err);
       setError('Could not access camera. Please check permissions.');
       setHasCamera(false);
     }
-  }, [initializeFaceMesh]);
+  }, [loadMediaPipe]);
 
-  // Stop camera
+  // Stop camera and cleanup
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
+    
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = undefined;
+    }
+    
     setHasCamera(false);
     setIsDetecting(false);
     setFaceDetected(false);
+    faceMeshRef.current = null;
   }, []);
 
-  // Start detection
-  const startDetection = useCallback(() => {
-    if (!hasCamera || !faceMeshRef.current || !videoRef.current) return;
-    
-    setIsDetecting(true);
-    
-    const processFrame = async () => {
-      if (!isDetecting || !videoRef.current || !faceMeshRef.current) return;
-      
-      await faceMeshRef.current.send({ image: videoRef.current });
-      
-      if (isDetecting) {
-        setTimeout(processFrame, 100); // 10 FPS for intermediate speed
-      }
-    };
-    
-    processFrame();
-  }, [hasCamera, isDetecting]);
-
-  // Stop detection
-  const stopDetection = useCallback(() => {
-    setIsDetecting(false);
-    frameCountRef.current = 0;
-    closedFramesRef.current = 0;
-    drowsyFramesRef.current = 0;
-  }, []);
-
-  // Effects
-  useEffect(() => {
-    if (isActive && hasCamera) {
-      startDetection();
-    } else {
-      stopDetection();
+  // Process video frames
+  const processFrame = useCallback(async () => {
+    if (!isDetecting || !videoRef.current || !faceMeshRef.current || !hasCamera) {
+      return;
     }
     
-    return () => stopDetection();
-  }, [isActive, hasCamera, startDetection, stopDetection]);
+    try {
+      await faceMeshRef.current.send({ image: videoRef.current });
+    } catch (error) {
+      console.error('Frame processing error:', error);
+    }
+    
+    if (isDetecting) {
+      animationFrameRef.current = requestAnimationFrame(processFrame);
+    }
+  }, [isDetecting, hasCamera]);
 
+  // Start/stop detection
+  useEffect(() => {
+    if (isActive && hasCamera && faceMeshRef.current && !isDetecting) {
+      setIsDetecting(true);
+      console.log('Starting detection...');
+      processFrame();
+    } else if (!isActive && isDetecting) {
+      setIsDetecting(false);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = undefined;
+      }
+    }
+  }, [isActive, hasCamera, isDetecting, processFrame]);
+
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopCamera();
@@ -353,11 +419,11 @@ const MediaPipeDrowsinessDetector: React.FC<MediaPipeDrowsinessDetectorProps> = 
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Eye className="h-5 w-5" />
-          MediaPipe Eye Detection
+          Enhanced Eye Detection
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Video feed */}
+        {/* Video feed with overlay */}
         <div className="relative">
           <video
             ref={videoRef}
@@ -369,11 +435,22 @@ const MediaPipeDrowsinessDetector: React.FC<MediaPipeDrowsinessDetectorProps> = 
           />
           <canvas
             ref={canvasRef}
-            className="absolute top-0 left-0 w-full h-full"
+            className="absolute top-0 left-0 w-full h-full pointer-events-none"
             width={320}
             height={240}
           />
           
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
+              <div className="text-white text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+                <p className="text-sm">Loading face detection...</p>
+              </div>
+            </div>
+          )}
+          
+          {/* Error display */}
           {error && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
               <div className="text-center p-4">
@@ -383,10 +460,13 @@ const MediaPipeDrowsinessDetector: React.FC<MediaPipeDrowsinessDetectorProps> = 
             </div>
           )}
           
-          {/* Face detection indicator */}
+          {/* Status indicators */}
           {hasCamera && (
-            <div className="absolute top-2 right-2">
+            <div className="absolute top-2 right-2 flex gap-2">
               <div className={`w-3 h-3 rounded-full ${faceDetected ? 'bg-green-500' : 'bg-red-500'}`} />
+              {isDetecting && (
+                <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" />
+              )}
             </div>
           )}
         </div>
@@ -394,9 +474,9 @@ const MediaPipeDrowsinessDetector: React.FC<MediaPipeDrowsinessDetectorProps> = 
         {/* Controls */}
         <div className="flex gap-2">
           {!hasCamera ? (
-            <Button onClick={startCamera} className="flex-1">
+            <Button onClick={startCamera} className="flex-1" disabled={isLoading}>
               <Camera className="mr-2 h-4 w-4" />
-              Start Camera
+              {isLoading ? 'Loading...' : 'Start Camera'}
             </Button>
           ) : (
             <Button onClick={stopCamera} variant="outline" className="flex-1">
@@ -406,7 +486,7 @@ const MediaPipeDrowsinessDetector: React.FC<MediaPipeDrowsinessDetectorProps> = 
           )}
         </div>
         
-        {/* Status indicators */}
+        {/* Status display */}
         {hasCamera && (
           <div className="space-y-2">
             <div className="flex justify-between items-center">
@@ -417,20 +497,22 @@ const MediaPipeDrowsinessDetector: React.FC<MediaPipeDrowsinessDetectorProps> = 
             </div>
             
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Face Detected:</span>
+              <span className="text-sm font-medium">Face:</span>
               <span className={`text-sm ${faceDetected ? 'text-green-600' : 'text-red-600'}`}>
-                {faceDetected ? 'Yes' : 'No'}
+                {faceDetected ? 'Detected' : 'Not Found'}
               </span>
             </div>
             
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Eye Ratio:</span>
-              <span className="text-sm">{eyeAspectRatio.toFixed(3)}</span>
+              <span className="text-sm font-mono">{eyeAspectRatio.toFixed(4)}</span>
             </div>
             
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Frames:</span>
-              <span className="text-sm">{frameCountRef.current}</span>
+              <span className="text-sm font-medium">Detection:</span>
+              <span className={`text-sm ${isDetecting ? 'text-green-600' : 'text-gray-600'}`}>
+                {isDetecting ? 'Active' : 'Inactive'}
+              </span>
             </div>
             
             {currentState !== 'awake' && (
