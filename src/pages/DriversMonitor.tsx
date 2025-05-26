@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Eye, Smartphone, Activity, AlertTriangle } from 'lucide-react';
 import FacialLandmarkDetector from '@/components/drowsiness/FacialLandmarkDetector';
+import YoloFacialDetector from '@/components/drowsiness/YoloFacialDetector';
 
 const DriversMonitor = () => {
   const navigate = useNavigate();
@@ -82,7 +83,7 @@ const DriversMonitor = () => {
           
           <TabsContent value="drowsiness" className="space-y-4">
             <div className="grid md:grid-cols-2 gap-6">
-              <FacialLandmarkDetector
+              <YoloFacialDetector
                 vehicleId={selectedVehicleId}
                 isActive={true}
                 onDetection={handleDrowsinessDetection}
@@ -90,42 +91,53 @@ const DriversMonitor = () => {
               
               <Card>
                 <CardHeader>
-                  <CardTitle>Advanced Detection Info</CardTitle>
+                  <CardTitle>Enhanced Detection Info</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="text-sm space-y-2">
-                    <p className="font-medium">Facial Landmark Detection:</p>
+                    <p className="font-medium">Enhanced Face Detection:</p>
                     <ul className="text-gray-600 space-y-1">
-                      <li>• Uses 68-point facial landmark model</li>
-                      <li>• Calculates Eye Aspect Ratio (EAR) in real-time</li>
-                      <li>• Frame-based state confirmation</li>
-                      <li>• Audio alarm for sleeping detection</li>
+                      <li>• Advanced face detection algorithm</li>
+                      <li>• Real-time eye landmark tracking</li>
+                      <li>• Improved Eye Aspect Ratio (EAR) calculation</li>
+                      <li>• Enhanced audio alerts with different patterns</li>
+                      <li>• More sensitive drowsiness detection</li>
                       <li>• Automatic event logging to database</li>
                     </ul>
                   </div>
                   
                   <div className="text-sm space-y-2">
-                    <p className="font-medium">Detection Algorithm:</p>
+                    <p className="font-medium">Enhanced Algorithm:</p>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-green-500 rounded"></div>
-                        <span>Awake: EAR &gt; 0.25 (Normal state)</span>
+                        <span>Awake: EAR &gt; 0.22 (Normal state)</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-yellow-500 rounded"></div>
-                        <span>Drowsy: EAR 0.20-0.25 for 15+ frames</span>
+                        <span>Drowsy: EAR 0.18-0.22 for 3+ frames</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-red-500 rounded"></div>
-                        <span>Sleeping: EAR &lt; 0.20 for 30+ frames</span>
+                        <span>Sleeping: EAR &lt; 0.18 for 3+ frames</span>
                       </div>
                     </div>
                   </div>
                   
+                  <div className="text-sm space-y-2">
+                    <p className="font-medium">Audio Alerts:</p>
+                    <ul className="text-gray-600 space-y-1">
+                      <li>• Drowsy: Triple beep pattern (500Hz)</li>
+                      <li>• Sleeping: Continuous alarm (1000Hz)</li>
+                      <li>• Cross-platform Web Audio API</li>
+                      <li>• Works on mobile devices</li>
+                    </ul>
+                  </div>
+                  
                   <div className="p-3 bg-blue-50 rounded-lg">
                     <p className="text-sm text-blue-800">
-                      <strong>Note:</strong> This implementation simulates the facial landmark detection. 
-                      In production, integrate with OpenCV.js and dlib for accurate face detection.
+                      <strong>Enhanced:</strong> This version uses more sophisticated face detection 
+                      with improved eye tracking for better accuracy in detecting drowsiness states.
                     </p>
                   </div>
                 </CardContent>
