@@ -1,13 +1,15 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { vehicleService } from '@/services/supabaseVehicleService';
 import { useToast } from '@/hooks/use-toast';
-import { Smartphone, MapPin, Play, Square, Navigation } from 'lucide-react';
+import { Smartphone, MapPin, Play, Square, Navigation, Map } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface MobileGPSTrackerProps {
   onPositionUpdate?: (position: { lat: number; lng: number; speed?: number }) => void;
@@ -31,6 +33,12 @@ const MobileGPSTracker: React.FC<MobileGPSTrackerProps> = ({ onPositionUpdate })
   const [error, setError] = useState<string | null>(null);
   const [isCreatingVehicle, setIsCreatingVehicle] = useState(false);
   const [newVehicleName, setNewVehicleName] = useState('My Mobile Device');
+  
+  // Manual coordinates input
+  const [manualLat, setManualLat] = useState('');
+  const [manualLng, setManualLng] = useState('');
+  const [manualSpeed, setManualSpeed] = useState('0');
+  const [useManualMode, setUseManualMode] = useState(false);
   
   const { toast } = useToast();
   const watchIdRef = React.useRef<number | null>(null);
@@ -92,6 +100,60 @@ const MobileGPSTracker: React.FC<MobileGPSTrackerProps> = ({ onPositionUpdate })
     }
   };
 
+  const updatePositionFromManual = useCallback(async () => {
+    const lat = parseFloat(manualLat);
+    const lng = parseFloat(manualLng);
+    const speed = parseFloat(manualSpeed);
+    
+    if (isNaN(lat) || isNaN(lng)) {
+      setError('Please enter valid latitude and longitude');
+      return;
+    }
+    
+    const gpsPosition: GPSPosition = {
+      latitude: lat,
+      longitude: lng,
+      speed: isNaN(speed) ? 0 : speed,
+      heading: 0,
+      accuracy: 10, // Assume 10m accuracy for manual input
+      timestamp: Date.now()
+    };
+
+    setCurrentPosition(gpsPosition);
+    setError(null);
+
+    // Update position in database
+    if (selectedVehicleId) {
+      try {
+        await vehicleService.updateVehiclePosition(selectedVehicleId, {
+          latitude: gpsPosition.latitude,
+          longitude: gpsPosition.longitude,
+          speed: gpsPosition.speed || 0,
+          heading: gpsPosition.heading || 0,
+          accuracy: gpsPosition.accuracy,
+          altitude: 0
+        });
+
+        // Notify parent component
+        onPositionUpdate?.(
+          { 
+            lat: gpsPosition.latitude, 
+            lng: gpsPosition.longitude, 
+            speed: gpsPosition.speed || undefined 
+          }
+        );
+        
+        toast({
+          title: 'Position Updated',
+          description: 'Manual position has been set successfully.',
+        });
+      } catch (err) {
+        console.error('Failed to update position:', err);
+        setError('Failed to update position in database');
+      }
+    }
+  }, [selectedVehicleId, manualLat, manualLng, manualSpeed, onPositionUpdate, toast]);
+
   const updatePosition = useCallback(async (position: GeolocationPosition) => {
     const gpsPosition: GPSPosition = {
       latitude: position.coords.latitude,
@@ -136,13 +198,13 @@ const MobileGPSTracker: React.FC<MobileGPSTrackerProps> = ({ onPositionUpdate })
     
     switch (error.code) {
       case error.PERMISSION_DENIED:
-        errorMessage = 'Location access denied. Please allow location permissions.';
+        errorMessage = 'Location access denied. Please allow location permissions or use manual mode.';
         break;
       case error.POSITION_UNAVAILABLE:
-        errorMessage = 'Location information unavailable.';
+        errorMessage = 'Location information unavailable. Try manual mode.';
         break;
       case error.TIMEOUT:
-        errorMessage = 'Location request timed out.';
+        errorMessage = 'Location request timed out. Try manual mode.';
         break;
     }
     
@@ -156,8 +218,27 @@ const MobileGPSTracker: React.FC<MobileGPSTrackerProps> = ({ onPositionUpdate })
       return;
     }
 
+    if (useManualMode) {
+      // Start manual tracking session
+      try {
+        const session = await vehicleService.startDrivingSession(selectedVehicleId);
+        setTrackingSession(session.id);
+        setIsTracking(true);
+        setError(null);
+        
+        toast({
+          title: 'Manual Tracking Started',
+          description: 'You can now update your position manually.',
+        });
+      } catch (err) {
+        console.error('Failed to start tracking:', err);
+        setError('Failed to start tracking session');
+      }
+      return;
+    }
+
     if (!navigator.geolocation) {
-      setError('Geolocation is not supported by this browser');
+      setError('Geolocation is not supported by this browser. Use manual mode instead.');
       return;
     }
 
@@ -187,7 +268,7 @@ const MobileGPSTracker: React.FC<MobileGPSTrackerProps> = ({ onPositionUpdate })
       console.error('Failed to start tracking:', err);
       setError('Failed to start tracking session');
     }
-  }, [selectedVehicleId, updatePosition, handleLocationError, toast]);
+  }, [selectedVehicleId, useManualMode, updatePosition, handleLocationError, toast]);
 
   const stopTracking = useCallback(async () => {
     if (watchIdRef.current !== null) {
@@ -201,7 +282,6 @@ const MobileGPSTracker: React.FC<MobileGPSTrackerProps> = ({ onPositionUpdate })
     if (trackingSession) {
       try {
         await vehicleService.endDrivingSession(trackingSession, {
-          // You could calculate these stats from the tracked positions
           total_distance: 0,
           max_speed: currentPosition?.speed || 0,
           avg_speed: currentPosition?.speed || 0
@@ -213,7 +293,7 @@ const MobileGPSTracker: React.FC<MobileGPSTrackerProps> = ({ onPositionUpdate })
     }
 
     toast({
-      title: 'GPS Tracking Stopped',
+      title: 'Tracking Stopped',
       description: 'Location tracking has been stopped.',
     });
   }, [trackingSession, currentPosition, toast]);
@@ -233,6 +313,11 @@ const MobileGPSTracker: React.FC<MobileGPSTrackerProps> = ({ onPositionUpdate })
 
   const formatCoordinate = (coord: number) => {
     return coord.toFixed(6);
+  };
+
+  const getGoogleMapsLink = () => {
+    if (!currentPosition) return '';
+    return `https://www.google.com/maps?q=${currentPosition.latitude},${currentPosition.longitude}`;
   };
 
   return (
@@ -280,12 +365,70 @@ const MobileGPSTracker: React.FC<MobileGPSTrackerProps> = ({ onPositionUpdate })
           )}
         </div>
 
+        {/* Tracking Mode Tabs */}
+        <Tabs value={useManualMode ? "manual" : "auto"} onValueChange={(value) => setUseManualMode(value === "manual")}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="auto">Auto GPS</TabsTrigger>
+            <TabsTrigger value="manual">Manual</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="auto" className="space-y-2">
+            <p className="text-sm text-gray-600">Uses device GPS for automatic location tracking</p>
+          </TabsContent>
+          
+          <TabsContent value="manual" className="space-y-2">
+            <p className="text-sm text-gray-600">Enter coordinates manually from Google Maps</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="lat">Latitude</Label>
+                <Input
+                  id="lat"
+                  value={manualLat}
+                  onChange={(e) => setManualLat(e.target.value)}
+                  placeholder="e.g. 40.7128"
+                  disabled={isTracking}
+                />
+              </div>
+              <div>
+                <Label htmlFor="lng">Longitude</Label>
+                <Input
+                  id="lng"
+                  value={manualLng}
+                  onChange={(e) => setManualLng(e.target.value)}
+                  placeholder="e.g. -74.0060"
+                  disabled={isTracking}
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="speed">Speed (mph)</Label>
+              <Input
+                id="speed"
+                value={manualSpeed}
+                onChange={(e) => setManualSpeed(e.target.value)}
+                placeholder="e.g. 25"
+                disabled={isTracking}
+              />
+            </div>
+            {useManualMode && isTracking && (
+              <Button 
+                onClick={updatePositionFromManual} 
+                className="w-full"
+                variant="outline"
+              >
+                <MapPin className="mr-2 h-4 w-4" />
+                Update Position
+              </Button>
+            )}
+          </TabsContent>
+        </Tabs>
+
         {/* Tracking Controls */}
         <div className="flex gap-2">
           {!isTracking ? (
             <Button 
               onClick={startTracking} 
-              disabled={!selectedVehicleId}
+              disabled={!selectedVehicleId || (useManualMode && (!manualLat || !manualLng))}
               className="flex-1"
             >
               <Play className="mr-2 h-4 w-4" />
@@ -307,16 +450,26 @@ const MobileGPSTracker: React.FC<MobileGPSTrackerProps> = ({ onPositionUpdate })
         <div className="flex justify-between items-center">
           <span className="text-sm font-medium">Status:</span>
           <Badge variant={isTracking ? "default" : "secondary"}>
-            {isTracking ? 'Tracking' : 'Stopped'}
+            {isTracking ? `Tracking (${useManualMode ? 'Manual' : 'Auto'})` : 'Stopped'}
           </Badge>
         </div>
 
         {/* Position Info */}
         {currentPosition && (
           <div className="space-y-2 p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <MapPin className="h-4 w-4" />
-              <span className="font-medium">Current Position</span>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                <span className="font-medium">Current Position</span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(getGoogleMapsLink(), '_blank')}
+              >
+                <Map className="h-3 w-3 mr-1" />
+                View
+              </Button>
             </div>
             
             <div className="grid grid-cols-2 gap-2 text-sm">
@@ -349,9 +502,12 @@ const MobileGPSTracker: React.FC<MobileGPSTrackerProps> = ({ onPositionUpdate })
 
         {/* Instructions */}
         <div className="text-xs text-gray-500 space-y-1">
+          <p><strong>Auto GPS:</strong></p>
           <p>• Allow location permissions when prompted</p>
           <p>• Keep this tab active for best accuracy</p>
-          <p>• GPS works best outdoors with clear sky view</p>
+          <p><strong>Manual Mode:</strong></p>
+          <p>• Get coordinates from Google Maps on your phone</p>
+          <p>• Long press on map → coordinates appear</p>
         </div>
       </CardContent>
     </Card>
